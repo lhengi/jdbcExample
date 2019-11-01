@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="com.google.flogger:flogger:0.4" type="repository">
+    <properties maven-id="com.google.flogger:flogger:0.4" />
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/lib/flogger-0.4.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/jsr305-3.0.1.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
