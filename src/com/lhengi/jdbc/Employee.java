@@ -1,5 +1,8 @@
 package com.lhengi.jdbc;
 
+/**
+ * Data model class for Employee
+ */
 public class Employee {
   private int eid;
   private String name;

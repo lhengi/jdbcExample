@@ -1,9 +1,13 @@
 package com.lhengi.jdbc;
 
-import java.sql.*;
+import java.io.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.HashSet;
-
 import com.google.common.flogger.FluentLogger;
 
 public class Main {
@@ -36,16 +40,42 @@ public class Main {
     // Create employee and supervisor tables
     createEmployeeTables();
     createSupervisorTable();
-    insertEmployee(/* eid = */1, /* name = */"Heng", /* salary = */120000, /* sid = */100);
-    insertEmployee(/* eid = */2, /* name = */"John", /* salary = */100000, /* sid = */100);
-    insertEmployee(/* eid = */3, /* name = */"Kyle", /* salary = */110000, /* sid = */100);
-    insertEmployee(/* eid = */11, /* name = */"Sam", /* salary = */50000, /* sid = */1);
-    insertEmployee(/* eid = */100, /* name = */"Li", /* salary = */160000, /* sid = */0);
-    getALL();
-    getAvgSalary();
-    getEmployeeName(0);
-    getAvgSalary(100);
+    try {
+      processFile(new File(args[0]));
+    } catch (IOException e) {
+      logger.atWarning().withCause(e).log("Oops, something wrong with your file!");
+      System.out.println("Oops, something wrong with your file!");
+    }
     dropAll();
+  }
+
+  private static void processFile(File file) throws IOException {
+    BufferedReader bufferedReader = new BufferedReader(new FileReader(file));
+    String line;
+    while ((line = bufferedReader.readLine()) != null) {
+      processLine(line);
+    }
+  }
+
+  private static void processLine(String line) {
+    Command command = new Command(line.split(" "));
+    if (command.getType() == 1) {
+      deleteEmployee(command.getEid());
+    } else if (command.getType() == 2) {
+      insertEmployee(command.getEid(), command.getName(), command.getSalary(), command.getSid());
+    } else if (command.getType() == 3) {
+      insertSupervisor(command.getEid(), command.getSid());
+    } else if (command.getType() == 4) {
+      getAvgSalary();
+    } else if (command.getType() == 5) {
+      getEmployeeName(command.getSid());
+    } else if (command.getType() == 6) {
+      getAvgSalary(command.getSid());
+    } else {
+      System.out.println("Unrecognized command: " + command.getType());
+      getALL();
+    }
+
   }
 
   /**
@@ -57,7 +87,6 @@ public class Main {
    * @param sid
    */
   private static void insertEmployee(int eid, String name, int salary, int sid) {
-    // TODO: implement
     String employeeQuery =
       "INSERT INTO homework4db.employee values( " +
         eid + ", '" + name + "', " + salary + ");";
@@ -112,7 +141,6 @@ public class Main {
    * @param eid
    */
   private static void deleteEmployee(int eid) {
-    // TODO: implement
     String employeeQuery = "DELETE FROM homework4db.employee WHERE eid = " + eid + ";";
     try {
       statement.execute(employeeQuery);
@@ -120,9 +148,11 @@ public class Main {
       logger.atWarning().withCause(e).log("SQLException when deleting from employee!");
     }
 
-    String supervisorQuery = "UPDATE homework4.db.supervisor " +
-      "set sid = NULL WHERE eid = " + eid +";";
+    String supervisorQuery = "UPDATE homework4db.supervisor " +
+      "set sid = NULL WHERE sid = " + eid +";";
+    String deleteSupervisorTup = "DELETE FROM homework4db.supervisor WHERE eid = " + eid +";";
     try {
+      statement.execute(deleteSupervisorTup);
       statement.execute(supervisorQuery);
     } catch (SQLException e) {
       logger.atWarning().withCause(e).log("SQLException when updating supervisor for deleted employee!");
@@ -135,17 +165,26 @@ public class Main {
    * @param sid
    */
   private static void insertSupervisor(int eid, int sid) {
-    // TODO: implement
     String supervisorQuery = "INSERT INTO homework4db.supervisor " +
+      "values(eid = " + eid + ", sid = " + sid +");";
+    String replaceQuery = "REPLACE INTO homework4db.supervisor " +
       "values(eid = " + eid + ", sid = " + sid +");";
     if (sid == -1) {
       supervisorQuery = "INSERT INTO homework4db.supervisor " +
+        "values(eid = " + eid + ", " + sid + " = NULL);";
+      replaceQuery = "REPLACE INTO homework4db.supervisor " +
         "values(eid = " + eid + ", " + sid + " = NULL);";
     }
     try {
       statement.execute(supervisorQuery);
     } catch (SQLException e) {
       logger.atWarning().withCause(e).log("SQLException when inserting to supervisor table!");
+    }
+
+    try {
+      statement.execute(replaceQuery);
+    } catch (SQLException e) {
+      logger.atWarning().withCause(e).log("SQLException when replacing supervisor table row!");
     }
   }
 
@@ -158,7 +197,7 @@ public class Main {
     try {
       ResultSet resultSet = statement.executeQuery(employeeQuery);
       resultSet.next();
-      logger.atInfo().log("Average Salary: %s", resultSet.getDouble("avgSalary"));
+      System.out.println("Average Salary: " + resultSet.getDouble("avgSalary"));
     } catch (SQLException e) {
       logger.atWarning().withCause(e).log("SQLException when getting average of all employee!");
     }
@@ -284,6 +323,9 @@ public class Main {
     }
   }
 
+  /**
+   * Drop all tables from database
+   */
   private static void dropAll() {
     String employeeQuery = "DROP TABLE homework4db.employee;";
     String supervisorQuery = "DROP TABLE homework4db.supervisor;";
